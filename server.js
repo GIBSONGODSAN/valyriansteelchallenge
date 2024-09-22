@@ -6,6 +6,14 @@ const Gamer = require('./models/GamerDetails'); // MongoDB model
 
 
 const app = express();
+const corsOptions = {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // MongoDB connection

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 const cors = require('cors');
 const uuid = require('uuid');
 const Gamer = require('./models/GamerDetails'); // MongoDB model
@@ -19,21 +19,26 @@ app.use(express.json());
 
 module.exports = app; // Ensure this line is present
 
-// MongoDB connection
 const connectDB = async () => {
+    const client = new MongoClient(process.env.MONGO_URL, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
     try {
-        await mongoose.connect(process.env.MONGO_URL, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
+        await client.connect();
         console.log("Connected to MongoDB Atlas");
+
+        // Optionally store the client for further operations
+        return client;
     } catch (error) {
         console.error("MongoDB connection error:", error);
         process.exit(1); // Exit the process if connection fails
     }
 };
 
-connectDB(); // Call the connect function
+// Call the connectDB function
+connectDB();
 
 // Basic route
 app.get('/', (req, res) => {
@@ -61,9 +66,9 @@ app.post('/api/gamers', async (req, res) => {
         });
 
         const savedGamer = await newGamer.save();
-        res.status(201).json(savedGamer);
+        res.status(201).send(savedGamer);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).send({ error: err.message });
     }
 });
 
@@ -100,9 +105,9 @@ app.get('/top-gamers', async (req, res) => {
             }
         ]);
 
-        res.status(200).json(topGamers);
+        res.status(200).send(topGamers);
     } catch (err) {
-        res.status(500).json({ error: 'An error occurred while retrieving the top gamers.' });
+        res.status(500).send({ error: 'An error occurred while retrieving the top gamers.' });
     }
 });
 

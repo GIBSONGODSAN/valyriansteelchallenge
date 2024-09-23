@@ -1,13 +1,10 @@
 require('dotenv').config();
 const express = require('express');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const cors = require('cors');
 const uuid = require('uuid');
-const Gamer = require('./models/GamerDetails'); // MongoDB model
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
 const corsOptions = {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -16,8 +13,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-
-module.exports = app; // Ensure this line is present
 
 const connectDB = async () => {
     const client = new MongoClient(process.env.MONGO_URL, {
@@ -29,16 +24,21 @@ const connectDB = async () => {
         await client.connect();
         console.log("Connected to MongoDB Atlas");
 
-        // Optionally store the client for further operations
-        return client;
+        // Store the database reference for further operations
+        const db = client.db('test'); // Replace 'gamerDB' with your actual database name
+
+        return db;
     } catch (error) {
         console.error("MongoDB connection error:", error);
         process.exit(1); // Exit the process if connection fails
     }
 };
 
-// Call the connectDB function
-connectDB();
+// Call the connectDB function and store the DB connection
+let db;
+connectDB().then(database => {
+    db = database;
+});
 
 // Basic route
 app.get('/', (req, res) => {
@@ -54,7 +54,7 @@ app.post('/api/gamers', async (req, res) => {
     } = req.body;
 
     try {
-        const newGamer = new Gamer({
+        const newGamer = {
             id: uuid.v4(),
             teamname,
             email,
@@ -62,11 +62,18 @@ app.post('/api/gamers', async (req, res) => {
             membernameone,
             membernametwo,
             membernamethree,
-            membernamefour
-        });
+            membernamefour,
+            eventscoreone: 0,
+            eventscoretwo: 0,
+            eventscorethree: 0,
+            eventscorefour: 0,
+            eventscorefive: 0,
+            created_at: new Date(),
+            updated_at: new Date()
+        };
 
-        const savedGamer = await newGamer.save();
-        res.status(201).send(savedGamer);
+        const result = await db.collection('gamers').insertOne(newGamer);
+        res.status(201).send(result.ops[0]); // Sends back the inserted document
     } catch (err) {
         res.status(400).send({ error: err.message });
     }
@@ -75,7 +82,7 @@ app.post('/api/gamers', async (req, res) => {
 // GET route to fetch top gamer details
 app.get('/top-gamers', async (req, res) => {
     try {
-        const topGamers = await Gamer.aggregate([
+        const topGamers = await db.collection('gamers').aggregate([
             {
                 $addFields: {
                     totalScore: {
@@ -103,7 +110,7 @@ app.get('/top-gamers', async (req, res) => {
                     totalScore: 1
                 }
             }
-        ]);
+        ]).toArray();
 
         res.status(200).send(topGamers);
     } catch (err) {
@@ -114,7 +121,7 @@ app.get('/top-gamers', async (req, res) => {
 // GET route to fetch all team names
 app.get('/teams', async (req, res) => {
     try {
-        const teams = await Gamer.find({}, 'id teamname');
+        const teams = await db.collection('gamers').find({}, { projection: { id: 1, teamname: 1 } }).toArray();
         res.status(200).json(teams);
     } catch (err) {
         console.error(err);
@@ -143,18 +150,22 @@ app.post('/gamer/score', async (req, res) => {
             return res.status(400).json({ error: 'Invalid event name. Valid options are: eventscoreone, eventscoretwo, eventscorethree, eventscorefour, eventscorefive.' });
         }
 
-        const gamer = await Gamer.findOne({ id, teamname });
+        const result = await db.collection('gamers').findOneAndUpdate(
+            { id, teamname },
+            {
+                $set: {
+                    [eventScoreFields[eventName]]: score,
+                    updated_at: new Date()
+                }
+            },
+            { returnDocument: 'after' }
+        );
 
-        if (!gamer) {
+        if (!result.value) {
             return res.status(404).json({ error: 'Gamer not found' });
         }
 
-        gamer[eventScoreFields[eventName]] = score;
-        gamer.updated_at = Date.now();
-
-        await gamer.save();
-
-        res.status(200).json({ message: 'Score updated successfully', gamer });
+        res.status(200).json({ message: 'Score updated successfully', gamer: result.value });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
@@ -166,7 +177,7 @@ app.get('/gamer/:teamname', async (req, res) => {
     try {
         const { teamname } = req.params;
 
-        const gamer = await Gamer.findOne({ teamname });
+        const gamer = await db.collection('gamers').findOne({ teamname });
 
         if (!gamer) {
             return res.status(404).json({ error: 'Gamer not found' });
@@ -189,4 +200,8 @@ app.get('/gamer/:teamname', async (req, res) => {
     }
 });
 
+const port = process.env.PORT || 3000;
 
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

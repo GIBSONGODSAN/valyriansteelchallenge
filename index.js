@@ -13,6 +13,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
 const connectDB = async () => {
     const client = new MongoClient(process.env.MONGO_URL, {

@@ -104,7 +104,7 @@ app.get('/top-gamers', async (req, res) => {
                 }
             },
             { $sort: { totalScore: -1 } },
-            { $limit: 10 },
+            { $limit: 30 },
             {
                 $project: {
                     teamname: 1,

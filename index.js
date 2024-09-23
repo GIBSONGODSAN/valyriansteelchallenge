@@ -145,6 +145,9 @@ app.post('/gamer/score', async (req, res) => {
             return res.status(400).json({ error: 'All fields (id, teamname, eventName, score) are required.' });
         }
 
+        // Log the inputs for debugging
+        console.log(`Received id: ${id}, teamname: ${teamname}, eventName: ${eventName}, score: ${score}`);
+
         const eventScoreFields = {
             eventscoreone: 'eventscoreone',
             eventscoretwo: 'eventscoretwo',
@@ -157,6 +160,9 @@ app.post('/gamer/score', async (req, res) => {
             return res.status(400).json({ error: 'Invalid event name. Valid options are: eventscoreone, eventscoretwo, eventscorethree, eventscorefour, eventscorefive.' });
         }
 
+        // Log the update query
+        console.log(`Updating score for event: ${eventName}, field: ${eventScoreFields[eventName]}`);
+
         const result = await db.collection('gamers').findOneAndUpdate(
             { id, teamname },
             {
@@ -167,17 +173,25 @@ app.post('/gamer/score', async (req, res) => {
             },
             { returnDocument: 'after' }
         );
-
-        if (!result.value) {
+        
+        // Log the result for debugging
+        console.log('Result of findOneAndUpdate:', result.id);
+        
+        // Check for the value in the result
+        if (!result.id) {
+            console.log('No gamer found with the specified id and teamname.');
             return res.status(404).json({ error: 'Gamer not found' });
         }
-
+        
+        // Successful update response
         res.status(200).json({ message: 'Score updated successfully', gamer: result.value });
+        
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 // GET method to fetch gamer details based on teamname
 app.get('/gamer/:teamname', async (req, res) => {

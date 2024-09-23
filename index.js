@@ -73,12 +73,18 @@ app.post('/api/gamers', async (req, res) => {
             updated_at: new Date()
         };
 
+        // Insert the document
         const result = await db.collection('gamers').insertOne(newGamer);
-        res.status(201).send(result.ops[0]); // Sends back the inserted document
+
+        // Fetch the newly inserted document to return
+        const insertedGamer = await db.collection('gamers').findOne({ _id: result.insertedId });
+
+        res.status(201).send(insertedGamer); // Return the newly inserted document
     } catch (err) {
         res.status(400).send({ error: err.message });
     }
 });
+
 
 // GET route to fetch top gamer details
 app.get('/top-gamers', async (req, res) => {
